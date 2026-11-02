@@ -54,7 +54,7 @@ async function handleChatProxy(request, env) {
       });
     }
 
-    const selectedModel = model || "gemini-2.5-flash";
+    const selectedModel = model || "gemini-3.8-flash";
     const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     const googlePayload = {
