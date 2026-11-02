@@ -1,7 +1,7 @@
 import htmlContent from './index.html';
 
 // Configuration
-const ACCESS_PASSWORD = "change_this_to_your_secure_password"; // Set your own password here
+const ACCESS_PASSWORD = env.ACCESS_PASSWORD; 
 
 export default {
   async fetch(request, env, ctx) {
