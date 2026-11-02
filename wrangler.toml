@@ -9,5 +9,6 @@ invocation_logs = true
 # Enables importing raw HTML text files via ES Modules inside worker.js
 [[rules]]
 type = "Text"
-globs = ["*.html"]
+globs = ["**/*.html"]
+fallthrough = true
 
