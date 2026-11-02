@@ -55,7 +55,7 @@ async function handleChatProxy(request, env) {
     }
 
     const selectedModel = model || "gemini-2.5-flash";
-    const googleApiUrl = `https://googleapis.com{selectedModel}:streamGenerateContent?key=${apiKey}`;
+    const googleApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     const googlePayload = {
       contents: messages.map(msg => ({
