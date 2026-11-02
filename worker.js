@@ -1,7 +1,7 @@
 import htmlContent from './index.html';
 
 // Configuration
-const ACCESS_PASSWORD = env.ACCESS_PASSWORD; 
+// const ACCESS_PASSWORD = 'env is not passed through yet'; 
 
 export default {
   async fetch(request, env, ctx) {
@@ -40,7 +40,7 @@ async function handleChatProxy(request, env) {
     const body = await request.json();
     const { password, messages, model } = body;
 
-    if (!password || password !== ACCESS_PASSWORD) {
+    if (!password || password !== env.ACCESS_PASSWORD) {
       return new Response(JSON.stringify({ error: "Unauthorized: Invalid or missing password." }), {
         status: 401,
         headers: { "Content-Type": "application/json" }
