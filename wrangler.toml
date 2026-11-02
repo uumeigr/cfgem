@@ -1,9 +1,12 @@
 name = "cfgem"
 main = "worker.js"
 compatibility_date = "2026-10-31"
+preview_urls = true
+workers_dev = true
+
 
 [observability.logs]
-enabled = false
+enabled = true
 invocation_logs = true
 
 # Enables importing raw HTML text files via ES Modules inside worker.js
