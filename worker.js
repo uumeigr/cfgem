@@ -70,6 +70,14 @@ async function handleChatProxy(request, env) {
       body: JSON.stringify(googlePayload)
     });
 
+    if (!googleResponse.ok) {
+        const errText = await googleResponse.text();
+        return new Response(JSON.stringify({ error: `Gemini API error: ${errText}` }), {
+            status: googleResponse.status,
+            headers: { "Content-Type": "application/json" }
+        });
+    }
+
     const { readable, writable } = new TransformStream();
     googleResponse.body.pipeTo(writable);
 
