@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Air Proxy</title>
+    <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 h-screen flex flex-col justify-between font-sans">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-gray-800 border-b border-gray-700 p-4 flex flex-wrap justify-between items-center gap-3">
+        <h1 class="text-xl font-bold tracking-tight text-blue-400">Gemini Proxy Console</h1>
+        <div class="flex items-center gap-2">
+            <select id="modelSelect" class="bg-gray-700 text-sm border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-blue-500">
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Fast)</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro (Powerful)</option>
+            </select>
+            <input type="password" id="passwordInput" placeholder="Enter Access Password" 
+                   class="bg-gray-700 text-sm border border-gray-600 rounded px-3 py-1 focus:outline-none focus:border-blue-500 w-44">
+        </div>
+    </header>
+
+    <!-- Main Live Chat Window -->
+    <main id="chatWindow" class="flex-1 overflow-y-auto p-4 space-y-4 max-w-4xl w-full mx-auto">
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 text-gray-300 shadow-md">
+            👋 Welcome! This application routes securely through Cloudflare Workers. 
+            Enter your custom security password in the header top right to begin prompting.
+        </div>
+    </main>
+
+    <!-- Bottom Message Input Dock -->
+    <footer class="bg-gray-800 border-t border-gray-700 p-4">
+        <div class="max-w-4xl w-full mx-auto flex gap-2">
+            <textarea id="userInput" placeholder="Type your prompt here..." rows="1"
+                      class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-500 resize-none text-gray-100 max-h-32"></textarea>
+            <button id="sendBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-5 rounded-lg transition-colors duration-150 disabled:opacity-50">
+                Send
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        const chatWindow = document.getElementById('chatWindow');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const passwordInput = document.getElementById('passwordInput');
+        const modelSelect = document.getElementById('modelSelect');
+
+        let messageHistory = [];
+
+        userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        sendBtn.addEventListener('click', sendMessage);
+
+        function appendMessage(role, text) {
+            const wrapper = document.createElement('div');
+            wrapper.className = role === 'user' ? 'flex justify-end' : 'flex justify-start';
+            
+            const msgBubble = document.createElement('div');
+            msgBubble.className = role === 'user' 
+                ? 'bg-blue-600 text-white rounded-2xl rounded-tr-none px-4 py-2 max-w-2xl whitespace-pre-wrap shadow-sm'
+                : 'bg-gray-800 text-gray-200 border border-gray-700 rounded-2xl rounded-tl-none px-4 py-2 max-w-2xl whitespace-pre-wrap shadow-sm';
+            
+            msgBubble.textContent = text;
+            wrapper.appendChild(msgBubble);
+            chatWindow.appendChild(wrapper);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return msgBubble;
+        }
+
+        async function sendMessage() {
+            const prompt = userInput.value.trim();
+            const pwd = passwordInput.value.trim();
+
+            if (!prompt) return;
+            if (!pwd) {
+                alert('Please enter your configured security access password top right.');
+                return;
+            }
+
+            userInput.value = '';
+            userInput.style.height = 'auto';
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+
+            appendMessage('user', prompt);
+            messageHistory.push({ role: 'user', content: prompt });
+
+            const botBubble = appendMessage('assistant', 'Thinking...');
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        password: pwd,
+                        model: modelSelect.value,
+                        messages: messageHistory
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error || 'Network error occurred connecting to server.');
+                }
+
+                botBubble.textContent = ''; 
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let accumulatedResponse = '';
+                let buffer = '';
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); 
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed || trimmed.startsWith('[')) continue; 
+
+                        try {
+                            const json = JSON.parse(trimmed.replace(/^,/, ''));
+                            const candidate = json.candidates[0];
+                            const chunkText = candidate.content.parts[0].text;
+                            if (chunkText) {
+                                accumulatedResponse += chunkText;
+                                botBubble.textContent = accumulatedResponse;
+                                chatWindow.scrollTop = chatWindow.scrollHeight;
+                            }
+                        } catch (e) {
+                            // Intentionally blank to catch partial string chunks
+                        }
+                    }
+                }
+
+                messageHistory.push({ role: 'assistant', content: accumulatedResponse });
+
+            } catch (err) {
+                botBubble.textContent = '❌ Error: ' + err.message;
+                botBubble.classList.add('border-red-500', 'text-red-400');
+            } finally {
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+                userInput.focus();
+            }
+        }
+    </script>
+</body>
+</html>
