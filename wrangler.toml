@@ -5,4 +5,5 @@ compatibility_date = "2026-10-31"
 # Enables importing raw HTML text files via ES Modules inside worker.js
 [[rules]]
 type = "Text"
-handlers = ["*.html"]
+globs = ["*.html"]
+
