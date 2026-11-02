@@ -1,11 +1,13 @@
 name = "cfgem"
 main = "worker.js"
 compatibility_date = "2026-10-31"
+
 preview_urls = true
 workers_dev = true
-route = "://umei.uk*"
 
-
+routes = [
+  { pattern = "umei.uk", custom_domain = true }
+]
 
 [observability.logs]
 enabled = true
